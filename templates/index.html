@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="statbar">
+    <div class="stat"><span style="font-weight:bold;">{{ target_name }} </span><span id="timestamp">-</span></div>
+    <div class="stat"><span style="font-weight:bold;">TEMP </span><span id="cpu-temp">-</span></div>
+    <div class="stat"><span style="font-weight:bold;">CPU </span><span id="cpu-load">-</span></div>
+    <div class="stat"><span style="font-weight:bold;">RAM </span><span id="ram">-</span></div>
+  </div>
+  <div class = "stream-grid">
+    {% for cam_id, cfg in cams.items() %}
+      <div class="cam">
+        <div class="label">{{ cam_id }}</div>
+        <img loading="lazy" style="transform: {{ cfg.css_transform }};" src="{{ url_for('stream', cam_id=cam_id) }}" onerror="this.style.display='none'">
+      </div>
+    {% endfor %}
+  </div>
+
+<script>
+  const timeEl = document.getElementById('timestamp');
+  const tempEl = document.getElementById('cpu-temp');
+  const loadEl = document.getElementById('cpu-load');
+  const ramEl  = document.getElementById('ram');
+  const errEl  = document.getElementById('error');
+
+  async function fetchStats(){
+    try{
+      const r = await fetch('/api/stats');
+      if(!r.ok) throw new Error(r.statusText);
+      const d = await r.json();
+
+      timeEl.textContent = d.timestamp;
+      tempEl.textContent = d.cpu_temp.toFixed(1) + ' °C';
+      loadEl.textContent = d.cpu_load.toFixed(1) + ' %';
+      ramEl.textContent  = d.ram_load.toFixed(1) + ' %';
+
+      errEl.style.display = 'none';
+    } catch(e) {
+      errEl.style.display = 'block';
+      console.error(e);
+    }
+  }
+  fetchStats();                 // first call immediately
+  setInterval(fetchStats, 1000); // then every second
+</script>
+</body>
+</html>
