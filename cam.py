@@ -6,6 +6,7 @@ import time
 import psutil
 import socket
 import ctypes
+import uuid
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -16,6 +17,7 @@ cameras = {
 }
 MAX_FRAME_SIZE = 10 * 1024 * 1024  # 10 MB
 
+cam_session = {cam_id: None for cam_id in cameras}
 shm_dict = {}
 size_dict = {}
 for cam_id in cameras:
@@ -53,7 +55,11 @@ def gen_frames(cam_id):
     size_val = size_dict[cam_id]
     boundary = b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
     last_n = -1
+    session_token = str(uuid.uuid4())
+    cam_session[cam_id] = session_token
     while True:
+        if cam_session[cam_id] != session_token:
+            break
         n = size_val.value
         if n > 0 and n != last_n:
             frame = bytes(shm.buf[:n])
