@@ -4,17 +4,18 @@ from datetime import datetime
 import threading
 import time
 import psutil
+import socket
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-target_name = "Bambu Lab A1"
+hostname = socket.gethostname()
 cameras = {
     "cam0": {"device": "/dev/video0", "size": (1920, 1080), "fps": 30, "css_transform": "scale(-1, -1)"},
     "cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
 }
 
 _latest   = {cam_id: b"" for cam_id in cameras}
-_errors   = {}   
+_errors   = {}
 
 def _grabber(cam_id: str, cam_config: dict):
     try:
@@ -58,7 +59,7 @@ def get_device_stats():
 
 @app.route("/")
 def index():
-    return render_template("index.html", cams=cameras, target_name=target_name)
+    return render_template("index.html", cams=cameras, hostname=hostname)
 
 @app.route("/stream/<cam_id>")
 def stream(cam_id):
