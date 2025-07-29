@@ -1,11 +1,10 @@
 from linuxpy.video.device import Device, VideoCapture
 from flask import Flask, Response, render_template, abort, jsonify
-from multiprocessing import shared_memory, Value, Process
 from datetime import datetime
-import time
+import threading
+import queue
 import psutil
 import socket
-import ctypes
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -14,17 +13,13 @@ cameras = {
     "cam0": {"device": "/dev/video0", "size": (1920, 1080), "fps": 30, "css_transform": "scale(-1, -1)"},
     "cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
 }
-MAX_FRAME_SIZE = 10 * 1024 * 1024  # 10 MB
 
-shm_dict = {}
-size_dict = {}
-for cam_id in cameras:
-    shm = shared_memory.SharedMemory(create=True, size=MAX_FRAME_SIZE)
-    shm_dict[cam_id] = shm
-    size_dict[cam_id] = Value(ctypes.c_int, 0)  # actual frame size
+_latest   = {cam_id: b"" for cam_id in cameras}
+_frame_events = {cam_id: threading.Event() for cam_id in cameras}
+_client_queues = {cam_id: set() for cam_id in cameras}
+_errors   = {}   
 
-def capture_frame(shm_name, size_val, cam_config: dict):
-    shm = shared_memory.SharedMemory(name=shm_name)
+def _grabber(cam_id: str, cam_config: dict):
     try:
         with Device(cam_config["device"]) as cam:
             capture = VideoCapture(cam)
@@ -32,35 +27,36 @@ def capture_frame(shm_name, size_val, cam_config: dict):
             capture.set_fps(cam_config["fps"])
             with capture:
                 for frame in capture:
-                    data = frame.data
-                    n = len(data)
-                    if n > MAX_FRAME_SIZE:
-                        continue  # skip if frame is too large
-                    shm.buf[:n] = data
-                    size_val.value = n
-    finally:
-        shm.close()
+                    for q in list(_client_queues[cam_id]):
+                        try:
+                            q.put_nowait(frame.data)
+                        except queue.Full:
+                            pass
+    except Exception as e:
+        _errors[cam_id] = e
 
-def start_cams():
-    for cam_id, cam_config in cameras.items():
-        shm = shm_dict[cam_id]
-        size_val = size_dict[cam_id]
-        p = Process(target=capture_frame, args=(shm.name, size_val, cam_config), daemon=True)
-        p.start()
+def _ensure_thread(cam_id: str):
+    attr = f"_thread_{cam_id}"
+    if getattr(_ensure_thread, attr, None) is None:
+        t = threading.Thread(target=_grabber, args=(cam_id, cameras[cam_id]),
+                             daemon=True)
+        t.start()
+        setattr(_ensure_thread, attr, t)
 
-def gen_frames(cam_id):
-    shm = shm_dict[cam_id]
-    size_val = size_dict[cam_id]
+def gen_frames(cam_id: str):
+    _ensure_thread(cam_id)
     boundary = b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
-    last_n = -1
-    while True:
-        n = size_val.value
-        if n > 0 and n != last_n:
-            frame = bytes(shm.buf[:n])
-            yield boundary + str(n).encode() + b"\r\n\r\n" + frame + b"\r\n"
-            last_n = n
-        else:
-            time.sleep(0.005)
+    last_frame = None
+    q = queue.Queue(maxsize=10)  # Buffer up to 10 frames per client
+    _client_queues[cam_id].add(q)
+    try:
+        while True:
+            if cam_id in _errors:
+                raise RuntimeError(_errors[cam_id])
+            frame = q.get()
+            yield (boundary + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n")
+    finally:
+        _client_queues[cam_id].discard(q)
 
 def get_device_stats():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -85,5 +81,4 @@ def api_stats():
     return jsonify(get_device_stats())
 
 if __name__ == "__main__":
-    start_cams()
     app.run(host="0.0.0.0", port=8000, threaded=True)
