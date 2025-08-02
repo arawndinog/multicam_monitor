@@ -12,8 +12,8 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 
 hostname = socket.gethostname()
 cameras = {
-    "cam0": {"device": "/dev/video0", "size": (1920, 1080), "fps": 30, "css_transform": "scale(-1, -1)"},
-    "cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
+    "cam0": {"device": "/dev/video0", "size": (1920, 1080), "fps": 30},
+    #"cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
 }
 MAX_FRAME_SIZE = 10 * 1024 * 1024  # 10 MB
 
