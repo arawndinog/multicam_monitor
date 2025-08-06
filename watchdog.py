@@ -18,26 +18,20 @@ def driver_hard_reset(driver: str = "brcmfmac") -> None:
     time.sleep(3)
     _run(f"modprobe {driver}", check=True)
 
-def wifi_watchdog(interval: int = 300,
-                  target: str = "192.168.99.1",
-                  iface: str = "wlan0",
-                  driver: str = "brcmfmac"):
-    """
-    1. Ping <target>. If OK → sleep.
-    2. Soft reset interface, ping again.
-    3. If still down → hard-reset driver.
-    """
+def wifi_watchdog(interval: int, target: str) -> None:
     while True:
+        time.sleep(interval)
         try:
-            if not ping_ok(target):
-                print("[wifi] link down → soft reset")
-                iface_soft_reset(iface)
-                if not ping_ok(target):
-                    print("[wifi] still down → hard reset driver")
-                    driver_hard_reset(driver)
+            if ping_ok(target):
+                continue
+            print("[wifi] link down → soft reset")
+            iface_soft_reset("wlan0")
+            if ping_ok(target):
+                continue
+            print("[wifi] still down → hard reset driver")
+            driver_hard_reset("brcmfmac")
         except Exception as e:
             print("[wifi] watchdog error:", e)
-        time.sleep(interval)
 
-def start_watchdog(interval, target):
+def start_wifi_watchdog(interval, target):
     threading.Thread(target=wifi_watchdog, kwargs={"interval": interval, "target": target}, daemon=True).start()
