@@ -1,3 +1,4 @@
+import wifi_watchdog
 from linuxpy.video.device import Device, VideoCapture
 from flask import Flask, Response, render_template, abort, jsonify
 from multiprocessing import shared_memory, Value, Process
@@ -13,7 +14,7 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 hostname = socket.gethostname()
 cameras = {
     "cam0": {"device": "/dev/video0", "size": (1920, 1080), "fps": 30},
-    #"cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
+    "cam1": {"device": "/dev/video2", "size": (1920, 1080), "fps": 30},
 }
 MAX_FRAME_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -92,4 +93,5 @@ def api_stats():
 
 if __name__ == "__main__":
     start_cams()
+    wifi_watchdog.start_watchdog(interval=120, target="192.168.99.1")
     app.run(host="0.0.0.0", port=8000, threaded=True)
