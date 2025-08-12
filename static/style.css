@@ -28,6 +28,7 @@ body {
     overflow: hidden;
     border: 2px solid #444;
     border-radius: 6px;
+    box-sizing: border-box;
 }
 
 .cam img {
@@ -52,20 +53,38 @@ body {
 }
 
 .statbar {
-    position: relative; 
+    position: relative;
     width: 100%;
-    text-align:center;
+    text-align: center;
     margin-top: 20px;
     margin-bottom: 10px;
-    font-size:16px;
+    font-size: 16px;
 }
 
 .statbar .stat {
-    display:inline-block;
+    display: inline-block;
     background: lightgrey;
     border-radius: 5px;
-    color:black;
+    color: black;
     padding: 5px 10px;
     margin: 5px;
-    min-width:100px;
+    min-width: 100px;
+}
+
+/* Single camera layout */
+@media (min-width: 641px) {
+    .stream-grid:has(> :only-child) {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+    }
+
+    .stream-grid:has(> :only-child) .cam {
+        max-width: min(90vw, 90vh * 1.78);
+        max-height: min(90vh, 90vw * 0.5625);
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+    }
 }

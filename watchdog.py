@@ -9,14 +9,16 @@ def ping_ok(target: str = "192.168.99.1") -> bool:
     return rc == 0
 
 def iface_soft_reset(iface: str = "wlan0") -> None:
-    _run(f"ip link set {iface} down", check=True)
+    _run(f"nmcli device disconnect {iface}", check=True)
     time.sleep(3)
-    _run(f"ip link set {iface} up", check=True)
+    _run(f"nmcli device connect {iface}", check=True)
 
-def driver_hard_reset(driver: str = "brcmfmac") -> None:
+def driver_hard_reset(iface: str = "wlan0", driver: str = "brcmfmac") -> None:
+    _run(f"nmcli device set {iface} managed no", check=True)
     _run(f"modprobe -r {driver}", check=True)
     time.sleep(3)
     _run(f"modprobe {driver}", check=True)
+    _run(f"nmcli device set {iface} managed yes", check=True)
 
 def wifi_watchdog(interval: int, target: str) -> None:
     while True:
@@ -29,7 +31,7 @@ def wifi_watchdog(interval: int, target: str) -> None:
             if ping_ok(target):
                 continue
             print("[wifi] still down → hard reset driver")
-            driver_hard_reset("brcmfmac")
+            driver_hard_reset("wlan0", "brcmfmac")
         except Exception as e:
             print("[wifi] watchdog error:", e)
 
