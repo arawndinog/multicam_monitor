@@ -9,16 +9,16 @@ def ping_ok(target: str = "192.168.99.1") -> bool:
     return rc == 0
 
 def iface_soft_reset(iface: str = "wlan0") -> None:
-    _run(f"nmcli device disconnect {iface}", check=True)
+    _run(f"sudo nmcli device disconnect {iface}", check=True)
     time.sleep(3)
-    _run(f"nmcli device connect {iface}", check=True)
+    _run(f"sudo nmcli device connect {iface}", check=True)
 
 def driver_hard_reset(iface: str = "wlan0", driver: str = "brcmfmac") -> None:
-    _run(f"nmcli device set {iface} managed no", check=True)
-    _run(f"modprobe -r {driver}", check=True)
+    _run(f"sudo nmcli device set {iface} managed no", check=True)
+    _run(f"sudo modprobe -r {driver}", check=True)
     time.sleep(3)
-    _run(f"modprobe {driver}", check=True)
-    _run(f"nmcli device set {iface} managed yes", check=True)
+    _run(f"sudo modprobe {driver}", check=True)
+    _run(f"sudo nmcli device set {iface} managed yes", check=True)
 
 def wifi_watchdog(interval: int, target: str) -> None:
     while True:

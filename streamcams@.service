@@ -6,8 +6,6 @@ After=network-online.target
 [Service]
 Type=simple
 User=%i
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYS_MODULE
-AmbientCapabilities=CAP_NET_ADMIN CAP_SYS_MODULE
 NoNewPrivileges=yes
 WorkingDirectory=/home/%i/Projects/multicam_monitor
 ExecStart=/home/%i/Projects/multicam_monitor/startup.sh
